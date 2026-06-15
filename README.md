@@ -4,6 +4,10 @@ A modern, polished take on the classic **Snake** game — built with pure **HTML
 
 The game features a glowing neon board, smooth animations, particle bursts when you eat food, increasing speed as your score grows, and a saved best score.
 
+## 🎮 Live Demo
+
+▶️ **Play it here:** [https://faizankhan17623.github.io/Snake-Game/](https://faizankhan17623.github.io/Snake-Game/)
+
 ---
 
 ## ✨ Features
@@ -34,6 +38,10 @@ The game features a glowing neon board, smooth animations, particle bursts when 
 ## 🚀 How to Run
 
 No installation needed — it's a single HTML file.
+
+**Easiest way:** just open the [Live Demo](https://faizankhan17623.github.io/Snake-Game/) and play in your browser.
+
+**Or run it locally:**
 
 1. Clone the repo:
    ```bash
