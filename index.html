@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake</title>
+<style>
+  :root {
+    --bg-0: #08111f;
+    --bg-1: #0f1c2d;
+    --panel: rgba(10, 18, 31, 0.72);
+    --panel-strong: rgba(11, 20, 35, 0.92);
+    --line: rgba(255, 255, 255, 0.08);
+    --text: #eef4ff;
+    --muted: #90a4bf;
+    --accent: #7ee787;
+    --accent-2: #f8c44f;
+    --danger: #ff6b6b;
+    --shadow: 0 26px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    color: var(--text);
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(126, 231, 135, 0.10), transparent 30%),
+      radial-gradient(circle at top right, rgba(248, 196, 79, 0.10), transparent 26%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-0));
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(circle at center, black 30%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .app {
+    width: min(94vw, 740px);
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(28px, 5vw, 44px);
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .brand p {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(90px, auto));
+    gap: 10px;
+  }
+
+  .stat {
+    min-width: 104px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    backdrop-filter: blur(14px);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .stat span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+
+  .stat strong {
+    font-size: 20px;
+    color: var(--text);
+  }
+
+  .stat.best strong { color: var(--accent-2); }
+  .stat.speed strong { color: var(--accent); }
+
+  .board-shell {
+    position: relative;
+    padding: 14px;
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.09);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
+      var(--panel-strong);
+    box-shadow: var(--shadow);
+  }
+
+  .board {
+    position: relative;
+    width: min(84vw, 620px);
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, rgba(17, 29, 47, 0.98), rgba(8, 14, 24, 0.98));
+  }
+
+  .overlay,
+  .toast {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+
+  .overlay.show,
+  .toast.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .overlay .card,
+  .toast .card {
+    width: min(88%, 340px);
+    padding: 22px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(8, 14, 24, 0.92);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.45);
+  }
+
+  .overlay h2,
+  .toast h2 {
+    margin: 0 0 8px;
+    font-size: 30px;
+    line-height: 1.1;
+  }
+
+  .overlay p,
+  .toast p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 140ms ease, filter 140ms ease, background 140ms ease;
+  }
+
+  button:hover { transform: translateY(-1px); }
+  button:active { transform: translateY(1px); }
+
+  .primary {
+    background: linear-gradient(180deg, #a4f39f, var(--accent));
+    color: #08111f;
+  }
+
+  .ghost {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  kbd {
+    display: inline-grid;
+    place-items: center;
+    min-width: 30px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: var(--text);
+    font-size: 12px;
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,0.06);
+  }
+
+  .pad {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .pad button {
+    border-radius: 14px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.10);
+    font-size: 18px;
+    box-shadow: none;
+  }
+
+  .pad button[data-dir="up"] { grid-column: 2; grid-row: 1; }
+  .pad button[data-dir="left"] { grid-column: 1; grid-row: 2; }
+  .pad button[data-dir="down"] { grid-column: 2; grid-row: 3; }
+  .pad button[data-dir="right"] { grid-column: 3; grid-row: 2; }
+
+  .pad button:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  @media (max-width: 640px) {
+    body { overflow-y: auto; }
+    .app { padding: 12px; }
+    .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+    .stat { min-width: 0; }
+    .board { width: min(92vw, 620px); }
+  }
+</style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Snake</h1>
+        <p>Eat the food, grow fast, and keep the run clean.</p>
+      </div>
+      <div class="stats" aria-label="Game stats">
+        <div class="stat">
+          <span>Score</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="stat best">
+          <span>Best</span>
+          <strong id="best">0</strong>
+        </div>
+        <div class="stat speed">
+          <span>Speed</span>
+          <strong id="speed">1.0x</strong>
+        </div>
+      </div>
+    </header>
+
+    <section class="board-shell">
+      <div class="board">
+        <canvas id="game" width="640" height="640"></canvas>
+
+        <div class="toast show" id="startToast">
+          <div class="card">
+            <h2>Press Space</h2>
+            <p>Use arrows or WASD. On mobile, use the direction pad below.</p>
+            <div class="actions">
+              <button class="primary" id="startBtn" type="button">Start Game</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay" id="overlay">
+          <div class="card">
+            <h2 id="overlayTitle">Game Over</h2>
+            <p id="overlayMsg">You scored 0 points.</p>
+            <div class="actions">
+              <button class="primary" id="restartBtn" type="button">Play Again</button>
+              <button class="ghost" id="pauseBtn" type="button">Resume</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="controls">
+      <div class="keys">
+        <span>Move:</span>
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>
+        <span>or</span>
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+        <span>Pause:</span>
+        <kbd>Space</kbd>
+      </div>
+      <div>Tip: the snake speeds up as your score climbs.</div>
+    </div>
+
+    <div class="pad" aria-label="Touch controls">
+      <button type="button" data-dir="up" aria-label="Move up">▲</button>
+      <button type="button" data-dir="left" aria-label="Move left">◀</button>
+      <button type="button" data-dir="down" aria-label="Move down">▼</button>
+      <button type="button" data-dir="right" aria-label="Move right">▶</button>
+    </div>
+  </main>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const speedEl = document.getElementById('speed');
+const overlay = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlayTitle');
+const overlayMsg = document.getElementById('overlayMsg');
+const restartBtn = document.getElementById('restartBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const startToast = document.getElementById('startToast');
+const startBtn = document.getElementById('startBtn');
+const padButtons = document.querySelectorAll('.pad button');
+
+const GRID = 20;
+const BASE_DELAY = 140;
+const MIN_DELAY = 70;
+const STEP_DELAY = 12;
+const CELL = canvas.width / GRID;
+
+let snake = [];
+let dir = { x: 1, y: 0 };
+let nextDir = { x: 1, y: 0 };
+let food = { x: 0, y: 0 };
+let score = 0;
+let best = Number(localStorage.getItem('snakeBest')) || 0;
+let delay = BASE_DELAY;
+let timer = null;
+let paused = true;
+let dead = false;
+let running = false;
+let particles = [];
+let foodPulse = 0;
+let frame = 0;
+
+bestEl.textContent = best;
+speedEl.textContent = '1.0x';
+
+function resetGame() {
+  snake = [
+    { x: 9, y: 10 },
+    { x: 8, y: 10 },
+    { x: 7, y: 10 }
+  ];
+  dir = { x: 1, y: 0 };
+  nextDir = { x: 1, y: 0 };
+  score = 0;
+  delay = BASE_DELAY;
+  paused = true;
+  dead = false;
+  running = true;
+  particles = [];
+  foodPulse = 0;
+  frame = 0;
+  scoreEl.textContent = '0';
+  speedEl.textContent = '1.0x';
+  overlay.classList.remove('show');
+  startToast.classList.add('show');
+  placeFood();
+  draw();
+  scheduleLoop();
+}
+
+function startGame() {
+  if (!running) {
+    resetGame();
+  }
+  paused = false;
+  startToast.classList.remove('show');
+  overlay.classList.remove('show');
+  loop();
+}
+
+function placeFood() {
+  do {
+    food = {
+      x: Math.floor(Math.random() * GRID),
+      y: Math.floor(Math.random() * GRID)
+    };
+  } while (snake.some(segment => segment.x === food.x && segment.y === food.y));
+}
+
+function scheduleLoop() {
+  clearTimeout(timer);
+  timer = setTimeout(loop, delay);
+}
+
+function loop() {
+  clearTimeout(timer);
+  if (dead) return;
+
+  frame += 1;
+  foodPulse += 0.09;
+  updateParticles();
+
+  if (!paused) {
+    step();
+  }
+
+  draw();
+  timer = setTimeout(loop, delay);
+}
+
+function step() {
+  if (isOpposite(nextDir, dir)) {
+    nextDir = dir;
+  }
+
+  dir = nextDir;
+  const head = {
+    x: snake[0].x + dir.x,
+    y: snake[0].y + dir.y
+  };
+
+  const hitWall = head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID;
+  const hitSelf = snake.some(segment => segment.x === head.x && segment.y === head.y);
+
+  if (hitWall || hitSelf) {
+    gameOver();
+    return;
+  }
+
+  snake.unshift(head);
+
+  if (head.x === food.x && head.y === food.y) {
+    score += 10;
+    scoreEl.textContent = String(score);
+    spawnFoodBurst(head.x, head.y);
+    placeFood();
+
+    const nextDelay = Math.max(MIN_DELAY, BASE_DELAY - Math.floor(score / 10) * STEP_DELAY);
+    if (nextDelay !== delay) {
+      delay = nextDelay;
+      speedEl.textContent = (BASE_DELAY / delay).toFixed(1).replace(/\.0$/, '') + 'x';
+    }
+  } else {
+    snake.pop();
+  }
+}
+
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, '#16243a');
+  bg.addColorStop(1, '#0a111d');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  for (let i = 1; i < GRID; i += 1) {
+    ctx.fillRect(i * CELL, 0, 1, h);
+    ctx.fillRect(0, i * CELL, w, 1);
+  }
+
+  drawFood();
+  drawSnake();
+  drawParticles();
+
+  if (paused && !dead && !startToast.classList.contains('show')) {
+    drawMessage('Paused', 'Space to continue');
+  }
+}
+
+function drawFood() {
+  const cx = food.x * CELL + CELL / 2;
+  const cy = food.y * CELL + CELL / 2;
+  const pulse = 1 + Math.sin(foodPulse) * 0.08;
+  const radius = (CELL / 2 - 4) * pulse;
+
+  const glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, CELL * 0.75);
+  glow.addColorStop(0, 'rgba(248, 196, 79, 0.95)');
+  glow.addColorStop(1, 'rgba(248, 196, 79, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, CELL * 0.75, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#f8c44f';
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#b35c1e';
+  ctx.beginPath();
+  ctx.ellipse(cx + 3, cy - radius + 2, 3, 7, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawSnake() {
+  snake.forEach((segment, index) => {
+    const x = segment.x * CELL + 2;
+    const y = segment.y * CELL + 2;
+    const size = CELL - 4;
+    const radius = 8;
+
+    const fill = index === 0 ? '#9ff39f' : index === snake.length - 1 ? '#2f8f57' : '#48c26d';
+    const glow = ctx.createLinearGradient(x, y, x + size, y + size);
+    glow.addColorStop(0, fill);
+    glow.addColorStop(1, index === 0 ? '#4fd86e' : '#1f7642');
+
+    ctx.fillStyle = glow;
+    roundRect(x, y, size, size, radius);
+
+    if (index === 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      roundRect(x + 3, y + 3, size - 6, 7, 4);
+
+      const eyeOffsetX = dir.x * 4;
+      const eyeOffsetY = dir.y * 4;
+      const baseX = x + size / 2 + eyeOffsetX;
+      const baseY = y + size / 2 + eyeOffsetY;
+      ctx.fillStyle = '#08111f';
+      ctx.beginPath();
+      ctx.arc(baseX - dir.y * 4, baseY - dir.x * 4, 2.6, 0, Math.PI * 2);
+      ctx.arc(baseX + dir.y * 4, baseY + dir.x * 4, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+}
+
+function drawParticles() {
+  for (const particle of particles) {
+    ctx.fillStyle = `rgba(${particle.color.r}, ${particle.color.g}, ${particle.color.b}, ${particle.alpha})`;
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawMessage(title, subtitle) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(5, 10, 18, 0.58)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#eef4ff';
+  ctx.textAlign = 'center';
+  ctx.font = '700 36px Segoe UI, sans-serif';
+  ctx.fillText(title, canvas.width / 2, canvas.height / 2 - 14);
+  ctx.fillStyle = '#90a4bf';
+  ctx.font = '500 16px Segoe UI, sans-serif';
+  ctx.fillText(subtitle, canvas.width / 2, canvas.height / 2 + 20);
+  ctx.restore();
+}
+
+function roundRect(x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function gameOver() {
+  dead = true;
+  paused = true;
+  clearTimeout(timer);
+
+  if (score > best) {
+    best = score;
+    localStorage.setItem('snakeBest', String(best));
+    bestEl.textContent = String(best);
+    overlayTitle.textContent = 'New Best';
+  } else {
+    overlayTitle.textContent = 'Game Over';
+  }
+
+  overlayMsg.textContent = `You scored ${score} points.`;
+  overlay.classList.add('show');
+}
+
+function spawnFoodBurst(x, y) {
+  const px = x * CELL + CELL / 2;
+  const py = y * CELL + CELL / 2;
+  for (let i = 0; i < 14; i += 1) {
+    const angle = (Math.PI * 2 * i) / 14;
+    particles.push({
+      x: px,
+      y: py,
+      vx: Math.cos(angle) * (1.4 + Math.random() * 1.6),
+      vy: Math.sin(angle) * (1.4 + Math.random() * 1.6),
+      radius: 2 + Math.random() * 2,
+      alpha: 1,
+      decay: 0.025 + Math.random() * 0.02,
+      color: { r: 248, g: 196, b: 79 }
+    });
+  }
+}
+
+function updateParticles() {
+  particles = particles.filter(particle => {
+    particle.x += particle.vx;
+    particle.y += particle.vy;
+    particle.alpha -= particle.decay;
+    particle.radius *= 0.98;
+    return particle.alpha > 0;
+  });
+}
+
+function isOpposite(a, b) {
+  return a.x === -b.x && a.y === -b.y;
+}
+
+function setDirection(next) {
+  if (dead) return;
+  if (isOpposite(next, dir)) return;
+  nextDir = next;
+  if (paused && running) {
+    paused = false;
+    startToast.classList.remove('show');
+    overlay.classList.remove('show');
+    loop();
+  }
+}
+
+const KEYS = {
+  ArrowUp: { x: 0, y: -1 },
+  KeyW: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+  KeyS: { x: 0, y: 1 },
+  ArrowLeft: { x: -1, y: 0 },
+  KeyA: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  KeyD: { x: 1, y: 0 }
+};
+
+document.addEventListener('keydown', event => {
+  if (event.code === 'Space') {
+    event.preventDefault();
+    if (dead) return;
+    if (!running) {
+      startGame();
+      return;
+    }
+    paused = !paused;
+    startToast.classList.toggle('show', paused && running);
+    overlay.classList.toggle('show', paused && !startToast.classList.contains('show') && !dead);
+    if (!paused) loop();
+    return;
+  }
+
+  const direction = KEYS[event.code];
+  if (!direction) return;
+  event.preventDefault();
+  setDirection(direction);
+});
+
+for (const button of padButtons) {
+  button.addEventListener('click', () => {
+    const dirName = button.dataset.dir;
+    const directionMap = {
+      up: { x: 0, y: -1 },
+      down: { x: 0, y: 1 },
+      left: { x: -1, y: 0 },
+      right: { x: 1, y: 0 }
+    };
+    setDirection(directionMap[dirName]);
+  });
+}
+
+restartBtn.addEventListener('click', () => {
+  resetGame();
+  startGame();
+});
+
+pauseBtn.addEventListener('click', () => {
+  if (dead) return;
+  paused = false;
+  overlay.classList.remove('show');
+  startToast.classList.remove('show');
+  loop();
+});
+
+startBtn.addEventListener('click', startGame);
+
+window.addEventListener('resize', draw);
+
+resetGame();
+</script>
+</body>
+</html>
