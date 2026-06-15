@@ -6,16 +6,6 @@ The game features a glowing neon board, smooth animations, particle bursts when 
 
 ---
 
-## 📸 Screenshots
-
-### Start Screen
-![Start Screen](screenshots/start-screen.png)
-
-### Gameplay
-![Gameplay](screenshots/gameplay.png)
-
----
-
 ## ✨ Features
 
 - 🎮 **Smooth gameplay** rendered on HTML5 Canvas
@@ -68,10 +58,6 @@ That's it — start playing! 🎉
 ```
 Snake-Game/
 ├── index.html          # The entire game (HTML + CSS + JS)
-├── screenshots/        # Game screenshots
-│   ├── start-screen.png
-│   └── gameplay.png
-├── .gitignore
 └── README.md
 ```
 
